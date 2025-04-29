@@ -11,18 +11,40 @@
     <input type="text" id="messageInput" placeholder="Type your message here..." />
     <button id="sendButton">Send</button>
 
+    <!-- this is where the messages will go -->
+    <div id="chatBox"></div>
+
     <script>
         // Find the input box and button
         let inputBox = document.getElementById("messageInput");
         let sendButton = document.getElementById("sendButton");
 
+        const sock = new WebSocket("ws://localhost:8080/ws")
+
+        sock.onopen = () => {
+            console.log("Connected to WebSocket server!");
+        }
+
+        sock.onmessage = (event) => {
+            const msg = event.data
+            const chatBox = document.getElementById("chatBox")
+            const p = document.createElement("p")
+            p.textContent = "Server: " + msg
+            chatBox.appendChild(p)
+        }
+
         // Add a click event listener to the button
         sendButton.addEventListener("click", function() {
-            // Get the message typed by the user
+            // get the message typed by the user
             let message = inputBox.value;
 
-            // For now, just print it to the browser console
-            console.log("User typed:", message);
+            sock.send(message)
+
+            const chatBox = document.getElementById("chatBox")
+            const p = document.createElement("p")
+            p.textContent = "You: " + message
+            chatBox.appendChild(p)
+            inputBox.value = ""
         });
     </script>
 </body>
