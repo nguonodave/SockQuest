@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h1>Hello, Chat App!</h1>
+
+    <input type="text" id="messageInput" placeholder="Type your message here..." />
+    <button id="sendButton">Send</button>
+
+    <script>
+        // Find the input box and button
+        let inputBox = document.getElementById("messageInput");
+        let sendButton = document.getElementById("sendButton");
+
+        // Add a click event listener to the button
+        sendButton.addEventListener("click", function() {
+            // Get the message typed by the user
+            let message = inputBox.value;
+
+            // For now, just print it to the browser console
+            console.log("User typed:", message);
+        });
+    </script>
+</body>
+
+</html>
