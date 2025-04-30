@@ -28,13 +28,20 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Client connected via WebSocket!")
 
 	for {
-		// read message from client
+		// read message from client (browser)
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
 			fmt.Println("Read error:", err)
 			break
 		}
 		fmt.Println("Received message:", string(msg))
+
+		// send message to client (browser)
+		writeErr := conn.WriteMessage(websocket.TextMessage, msg)
+		if writeErr != nil {
+			fmt.Println("Error sending message:", err)
+			break
+		}
 	}
 }
 

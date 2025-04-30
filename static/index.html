@@ -25,6 +25,7 @@
             console.log("Connected to WebSocket server!");
         }
 
+        // listenning/waiting for message from server
         sock.onmessage = (event) => {
             const msg = event.data
             const chatBox = document.getElementById("chatBox")
@@ -38,6 +39,7 @@
             // get the message typed by the user
             let message = inputBox.value;
 
+            // this sends the message from the browser to go server
             sock.send(message)
 
             const chatBox = document.getElementById("chatBox")
