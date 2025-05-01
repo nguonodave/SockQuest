@@ -8,8 +8,15 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var clients = make(map[*websocket.Conn]bool)
-var broadcast = make(chan []byte)
+type Message struct {
+	From      string `json:"from"`
+	To        string `json:"to"`
+	Content   string `json:"content"`
+	Timestamp string `json:"timestamp"`
+}
+
+var users = make(map[string]*websocket.Conn)
+var broadcast = make(chan Message)
 
 // upgrader upgrades http conns to websocket conns
 var upgrader = websocket.Upgrader{
@@ -24,47 +31,58 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	// upgrade initial get request to a WebSocket
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		fmt.Println("WebSocket upgrade failed:", err)
+		log.Println("WebSocket upgrade failed:", err)
 		return
 	}
 	defer conn.Close()
 
 	fmt.Println("Client connected via WebSocket!")
 
-	clients[conn] = true
+	var loginMsg Message
+	jsonErr := conn.ReadJSON(&loginMsg)
+	if jsonErr != nil {
+		log.Println("Login message read error:", err)
+		return
+	}
+
+	username := loginMsg.From
+	users[username] = conn
+	log.Println(username, "connected")
+
+	// Clean up on disconnect
+	defer func() {
+		delete(users, username)
+		log.Println(username, "disconnected")
+	}()
 
 	for {
-		// read message from client (browser)
-		_, msg, err := conn.ReadMessage()
+		// read message from user
+		var msg Message
+		err := conn.ReadJSON(&msg)
 		if err != nil {
-			fmt.Println("Read error:", err)
-			delete(clients, conn)
+			fmt.Println("Read error from "+username+": ", err)
 			break
 		}
-		fmt.Println("Received message:", string(msg))
 
 		broadcast <- msg
-
-		// // send message to client (browser)
-		// writeErr := conn.WriteMessage(websocket.TextMessage, msg)
-		// if writeErr != nil {
-		// 	fmt.Println("Error sending message:", err)
-		// 	break
-		// }
 	}
 }
 
-func handleMessages()  {
+func handleMessages() {
 	for {
 		msg := <-broadcast
 
-		for client := range clients {
-			err := client.WriteMessage(websocket.TextMessage, msg)
+		recipientConn, ok := users[msg.To]
+		if ok {
+			err := recipientConn.WriteJSON(msg)
 			if err != nil {
-				log.Println("Write error:", err)
-                client.Close()
-                delete(clients, client)
+				log.Println("Error sending message to", msg.To+":", err)
+				recipientConn.Close()
+				delete(users, msg.To)
 			}
+		} else {
+			log.Println("User", msg.To, "is not online. Message not delivered.")
+			// Later: store in DB for delivery when they return
 		}
 	}
 }

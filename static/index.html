@@ -1,54 +1,88 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chat App</title>
 </head>
 <body>
-    <h1>Hello, Chat App!</h1>
+  <h1>One-on-One Chat App</h1>
 
-    <input type="text" id="messageInput" placeholder="Type your message here..." />
-    <button id="sendButton">Send</button>
+  <!-- Username: who you are -->
+  <input type="text" id="usernameInput" placeholder="Enter your username" />
 
-    <!-- this is where the messages will go -->
-    <div id="chatBox"></div>
+  <!-- Recipient: who you want to talk to -->
+  <input type="text" id="recipientInput" placeholder="Recipient's username" />
 
-    <script>
-        // Find the input box and button
-        let inputBox = document.getElementById("messageInput");
-        let sendButton = document.getElementById("sendButton");
+  <!-- Chat message input -->
+  <input type="text" id="messageInput" placeholder="Type your message..." />
+  <button id="sendButton">Send</button>
 
-        const sock = new WebSocket("ws://localhost:8080/ws")
+  <!-- Chat messages display area -->
+  <div id="chatBox"></div>
 
-        sock.onopen = () => {
-            console.log("Connected to WebSocket server!");
-        }
+  <script>
+    let sock;
+    let username;
 
-        // listenning/waiting for message from server
-        sock.onmessage = (event) => {
-            const msg = event.data
-            const chatBox = document.getElementById("chatBox")
-            const p = document.createElement("p")
-            p.textContent = "Server: " + msg
-            chatBox.appendChild(p)
-        }
+    const usernameInput = document.getElementById("usernameInput");
+    const recipientInput = document.getElementById("recipientInput");
+    const messageInput = document.getElementById("messageInput");
+    const sendButton = document.getElementById("sendButton");
+    const chatBox = document.getElementById("chatBox");
 
-        // Add a click event listener to the button
-        sendButton.addEventListener("click", function() {
-            // get the message typed by the user
-            let message = inputBox.value;
+    // Start connection only when username is entered
+    usernameInput.addEventListener("change", function () {
+      username = usernameInput.value;
 
-            // this sends the message from the browser to go server
-            sock.send(message)
+      // Connect to WebSocket server
+      sock = new WebSocket("ws://localhost:8080/ws");
 
-            const chatBox = document.getElementById("chatBox")
-            const p = document.createElement("p")
-            p.textContent = "You: " + message
-            chatBox.appendChild(p)
-            inputBox.value = ""
-        });
-    </script>
+      sock.onopen = () => {
+        console.log("WebSocket connected");
+
+        // Send login message: from=username, to="", content=""
+        const loginMsg = {
+          from: username,
+          to: "",
+          content: ""
+        };
+
+        sock.send(JSON.stringify(loginMsg));
+      };
+
+      sock.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        const p = document.createElement("p");
+        p.textContent = `${msg.from} → ${msg.to}: ${msg.content}`;
+        chatBox.appendChild(p);
+      };
+    });
+
+    sendButton.addEventListener("click", function () {
+      const message = messageInput.value;
+      const recipient = recipientInput.value;
+
+      if (!message || !recipient || !username) {
+        alert("Please enter all fields: username, recipient, and message.");
+        return;
+      }
+
+      const msg = {
+        from: username,
+        to: recipient,
+        content: message
+      };
+
+      sock.send(JSON.stringify(msg));
+
+      // Show your own message
+      const p = document.createElement("p");
+      p.textContent = `You → ${recipient}: ${message}`;
+      chatBox.appendChild(p);
+
+      messageInput.value = "";
+    });
+  </script>
 </body>
-
 </html>
