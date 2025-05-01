@@ -2,10 +2,14 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gorilla/websocket"
 )
+
+var clients = make(map[*websocket.Conn]bool)
+var broadcast = make(chan []byte)
 
 // upgrader upgrades http conns to websocket conns
 var upgrader = websocket.Upgrader{
@@ -27,20 +31,40 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println("Client connected via WebSocket!")
 
+	clients[conn] = true
+
 	for {
 		// read message from client (browser)
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
 			fmt.Println("Read error:", err)
+			delete(clients, conn)
 			break
 		}
 		fmt.Println("Received message:", string(msg))
 
-		// send message to client (browser)
-		writeErr := conn.WriteMessage(websocket.TextMessage, msg)
-		if writeErr != nil {
-			fmt.Println("Error sending message:", err)
-			break
+		broadcast <- msg
+
+		// // send message to client (browser)
+		// writeErr := conn.WriteMessage(websocket.TextMessage, msg)
+		// if writeErr != nil {
+		// 	fmt.Println("Error sending message:", err)
+		// 	break
+		// }
+	}
+}
+
+func handleMessages()  {
+	for {
+		msg := <-broadcast
+
+		for client := range clients {
+			err := client.WriteMessage(websocket.TextMessage, msg)
+			if err != nil {
+				log.Println("Write error:", err)
+                client.Close()
+                delete(clients, client)
+			}
 		}
 	}
 }
@@ -51,6 +75,8 @@ func main() {
 
 	// WebSocket endpoint
 	http.HandleFunc("/ws", handleWebSocket)
+
+	go handleMessages()
 
 	fmt.Println("Server started at http://localhost:8080")
 	http.ListenAndServe(":8080", nil)
