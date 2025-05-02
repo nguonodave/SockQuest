@@ -103,6 +103,13 @@ func handleMessages() {
 	for {
 		msg := <-broadcast
 
+		_, insertMessageErr := db.Exec(`
+		INSERT INTO messages (from_user, to_user, content, timestamp)
+		VALUES (?, ?, ?, ?)`, msg.From, msg.To, msg.Content, msg.Timestamp)
+		if insertMessageErr != nil {
+			log.Println("Failed to save message to database: ", insertMessageErr)
+		}
+
 		recipientConn, ok := users[msg.To]
 		if ok {
 			err := recipientConn.WriteJSON(msg)
