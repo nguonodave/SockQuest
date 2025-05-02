@@ -208,6 +208,39 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func handleLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Only POST method allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	username := r.FormValue("username")
+	password := r.FormValue("password")
+
+	if username == "" || password == "" {
+		http.Error(w, "Username and password required", http.StatusBadRequest)
+		return
+	}
+
+	var storedPassword string
+	err := db.QueryRow("SELECT password FROM users WHERE username = ?", username).Scan(&storedPassword)
+	if err == sql.ErrNoRows {
+		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
+		return
+	} else if err != nil {
+		http.Error(w, "Server error", http.StatusInternalServerError)
+		return
+	}
+
+	if password != storedPassword {
+		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Login successful"))
+}
+
 func main() {
 	setupDatabase()
 
@@ -215,6 +248,7 @@ func main() {
 	http.Handle("/", http.FileServer(http.Dir("./static")))
 	http.HandleFunc("/online", handleOnlineUsers)
 	http.HandleFunc("/register", registerHandler)
+	http.HandleFunc("/login", handleLogin)
 	// WebSocket endpoint
 	http.HandleFunc("/ws", handleWebSocket)
 
