@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
 
@@ -48,19 +49,29 @@ func setupDatabase() {
 		log.Fatal("Failed to open database:", err)
 	}
 
-	createTable := `
+	createMessagesTable := `
 	CREATE TABLE IF NOT EXISTS messages (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		from_user TEXT,
 		to_user TEXT,
 		content TEXT,
 		timestamp TEXT
-	);
-	`
+	);`
 
-	_, err = db.Exec(createTable)
+	createUsersTable := `
+	CREATE TABLE IF NOT EXISTS users (
+		username TEXT PRIMARY KEY NOT NULL UNIQUE,
+		password TEXT NOT NULL
+	);`
+
+	_, err = db.Exec(createMessagesTable)
 	if err != nil {
 		log.Fatal("Failed to create messages table:", err)
+	}
+
+	_, err = db.Exec(createUsersTable)
+	if err != nil {
+		log.Fatal("Failed to create users table:", err)
 	}
 
 	log.Println("Database initialized successfully.")
@@ -161,12 +172,49 @@ func handleMessages() {
 	}
 }
 
+func registerHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var creds struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&creds)
+	if err != nil {
+		http.Error(w, "Invalid input", http.StatusBadRequest)
+		return
+	}
+
+	// Insert user into database
+	stmt := `INSERT INTO users (username, password) VALUES (?, ?)`
+	_, err = db.Exec(stmt, creds.Username, creds.Password)
+	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			http.Error(w, "Username already exists", http.StatusConflict)
+			return
+		}
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Registration successful",
+	})
+}
+
 func main() {
 	setupDatabase()
 
 	// serve static files
 	http.Handle("/", http.FileServer(http.Dir("./static")))
 	http.HandleFunc("/online", handleOnlineUsers)
+	http.HandleFunc("/register", registerHandler)
 	// WebSocket endpoint
 	http.HandleFunc("/ws", handleWebSocket)
 
