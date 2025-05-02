@@ -214,16 +214,24 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	username := r.FormValue("username")
-	password := r.FormValue("password")
+	var logincreds struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
 
-	if username == "" || password == "" {
+	jsonlogerr := json.NewDecoder(r.Body).Decode(&logincreds)
+	if jsonlogerr != nil {
+		http.Error(w, "Invalid input", http.StatusBadRequest)
+		return
+	}
+
+	if logincreds.Username == "" || logincreds.Password == "" {
 		http.Error(w, "Username and password required", http.StatusBadRequest)
 		return
 	}
 
 	var storedPassword string
-	err := db.QueryRow("SELECT password FROM users WHERE username = ?", username).Scan(&storedPassword)
+	err := db.QueryRow("SELECT password FROM users WHERE username = ?", logincreds.Username).Scan(&storedPassword)
 	if err == sql.ErrNoRows {
 		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
 		return
@@ -232,13 +240,16 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if password != storedPassword {
+	if logincreds.Password != storedPassword {
 		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Login successful"))
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Login successful",
+	})
 }
 
 func main() {
