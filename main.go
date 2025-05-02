@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -29,6 +30,15 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true // allow all domain conns
 	},
+}
+
+func handleOnlineUsers(w http.ResponseWriter, r *http.Request) {
+	usernames := []string{}
+	for username := range users {
+		usernames = append(usernames, username)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(usernames)
 }
 
 func setupDatabase() {
@@ -156,7 +166,7 @@ func main() {
 
 	// serve static files
 	http.Handle("/", http.FileServer(http.Dir("./static")))
-
+	http.HandleFunc("/online", handleOnlineUsers)
 	// WebSocket endpoint
 	http.HandleFunc("/ws", handleWebSocket)
 
