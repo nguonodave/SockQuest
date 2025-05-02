@@ -1,9 +1,12 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
+
+	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/gorilla/websocket"
 )
@@ -15,14 +18,42 @@ type Message struct {
 	Timestamp string `json:"timestamp"`
 }
 
-var users = make(map[string]*websocket.Conn)
-var broadcast = make(chan Message)
+var (
+	users     = make(map[string]*websocket.Conn)
+	broadcast = make(chan Message)
+	db        *sql.DB
+)
 
 // upgrader upgrades http conns to websocket conns
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true // allow all domain conns
 	},
+}
+
+func setupDatabase() {
+	var err error
+	db, err = sql.Open("sqlite3", "./chat.db")
+	if err != nil {
+		log.Fatal("Failed to open database:", err)
+	}
+
+	createTable := `
+	CREATE TABLE IF NOT EXISTS messages (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		from_user TEXT,
+		to_user TEXT,
+		content TEXT,
+		timestamp TEXT
+	);
+	`
+
+	_, err = db.Exec(createTable)
+	if err != nil {
+		log.Fatal("Failed to create messages table:", err)
+	}
+
+	log.Println("Database initialized successfully.")
 }
 
 // handleWebSocket uses the upgrader to upgrade the http conn
@@ -88,6 +119,8 @@ func handleMessages() {
 }
 
 func main() {
+	setupDatabase()
+
 	// serve static files
 	http.Handle("/", http.FileServer(http.Dir("./static")))
 
