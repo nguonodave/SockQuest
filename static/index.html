@@ -1,18 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Chat App</title>
 </head>
+
 <body>
   <h1>One-on-One Chat App</h1>
 
-  <!-- Username: who you are -->
+  <label for="usernameInput">Your Name:</label>
   <input type="text" id="usernameInput" placeholder="Enter your username" />
 
-  <!-- Recipient: who you want to talk to -->
-  <input type="text" id="recipientInput" placeholder="Recipient's username" />
+  <label for="recipientInput">Send To:</label>
+  <input type="text" id="recipientInput" placeholder="Recipient username" />
 
   <!-- Chat message input -->
   <input type="text" id="messageInput" placeholder="Type your message..." />
@@ -45,7 +47,8 @@
         const loginMsg = {
           from: username,
           to: "",
-          content: ""
+          content: "LOGIN",
+          timestamp: new Date().toISOString()
         };
 
         sock.send(JSON.stringify(loginMsg));
@@ -54,7 +57,7 @@
       sock.onmessage = (event) => {
         const msg = JSON.parse(event.data);
         const p = document.createElement("p");
-        p.textContent = `${msg.from} → ${msg.to}: ${msg.content}`;
+        p.textContent = `${msg.from} → you: ${msg.content}`;
         chatBox.appendChild(p);
       };
     });
@@ -71,7 +74,8 @@
       const msg = {
         from: username,
         to: recipient,
-        content: message
+        content: message,
+        timestamp: new Date().toISOString()
       };
 
       sock.send(JSON.stringify(msg));
@@ -80,9 +84,9 @@
       const p = document.createElement("p");
       p.textContent = `You → ${recipient}: ${message}`;
       chatBox.appendChild(p);
-
       messageInput.value = "";
     });
   </script>
 </body>
+
 </html>
