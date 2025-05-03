@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -245,10 +247,51 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Generate random session ID
+	sessionID := make([]byte, 16)
+	_, err = rand.Read(sessionID)
+	if err != nil {
+		http.Error(w, "Failed to create session", http.StatusInternalServerError)
+		return
+	}
+	sessionIDStr := hex.EncodeToString(sessionID)
+	sessions[sessionIDStr] = logincreds.Username
+
+	// Set cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session",
+		Value:    sessionIDStr,
+		Path:     "/",
+		HttpOnly: true,
+		// Secure: true, // uncomment when using HTTPS
+	})
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"message": "Login successful",
+	})
+}
+
+var sessions = make(map[string]string) // sessionID -> username
+
+func handleSession(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("session")
+	if err != nil || cookie.Value == "" {
+		http.Error(w, `{"loggedIn": false}`, http.StatusUnauthorized)
+		return
+	}
+
+	username := sessions[cookie.Value]
+	if username == "" {
+		http.Error(w, `{"loggedIn": false}`, http.StatusUnauthorized)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"loggedIn": true,
+		"username": username,
 	})
 }
 
@@ -260,6 +303,7 @@ func main() {
 	http.HandleFunc("/online", handleOnlineUsers)
 	http.HandleFunc("/register", registerHandler)
 	http.HandleFunc("/login", handleLogin)
+	http.HandleFunc("/session", handleSession)
 	// WebSocket endpoint
 	http.HandleFunc("/ws", handleWebSocket)
 

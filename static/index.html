@@ -102,6 +102,22 @@
       }
     };
 
+    async function checkSession() {
+      const res = await fetch("/session", {
+        method: "GET",
+        credentials: "include"
+      });
+
+      const data = await res.json();
+      if (data.loggedIn) {
+        currentUser = data.username;
+        document.getElementById("authSection").classList.add("hidden");
+        document.getElementById("chatSection").classList.remove("hidden");
+        document.getElementById("currentUser").textContent = currentUser;
+        connectWebSocket();
+      }
+    }
+
     function connectWebSocket() {
       sock = new WebSocket("ws://localhost:8080/ws");
 
@@ -147,6 +163,8 @@
 
       document.getElementById("messageInput").value = "";
     };
+
+    checkSession();
   </script>
 </body>
 
