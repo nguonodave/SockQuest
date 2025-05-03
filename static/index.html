@@ -5,87 +5,148 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Chat App</title>
+  <style>
+    .hidden {
+      display: none;
+    }
+  </style>
 </head>
 
 <body>
   <h1>One-on-One Chat App</h1>
 
-  <label for="usernameInput">Your Name:</label>
-  <input type="text" id="usernameInput" placeholder="Enter your username" />
+  <div id="authSection">
+    <div id="toggleLinks">
+      <button id="showLogin">Login</button>
+      <button id="showRegister">Register</button>
+    </div>
 
-  <label for="recipientInput">Send To:</label>
-  <input type="text" id="recipientInput" placeholder="Recipient username" />
+    <div id="loginForm">
+      <h2>Login</h2>
+      <input type="text" id="loginUsername" placeholder="Username" /><br />
+      <input type="password" id="loginPassword" placeholder="Password" /><br />
+      <button id="loginButton">Login</button>
+    </div>
 
-  <!-- Chat message input -->
-  <input type="text" id="messageInput" placeholder="Type your message..." />
-  <button id="sendButton">Send</button>
+    <div id="registerForm" class="hidden">
+      <h2>Register</h2>
+      <form>
+        <input type="text" id="regUsername" placeholder="Username" /><br />
+        <input type="password" id="regPassword" placeholder="Password" /><br />
+        <button id="registerButton">Register</button>
+      </form>
+    </div>
+  </div>
 
-  <!-- Chat messages display area -->
-  <div id="chatBox"></div>
+  <!-- Chat section -->
+  <div id="chatSection" class="hidden">
+    <h2>Welcome, <span id="currentUser"></span></h2>
+    <input type="text" id="toUser" placeholder="Recipient username" /><br />
+    <input type="text" id="messageInput" placeholder="Type a message..." />
+    <button id="sendButton">Send</button>
+
+    <div id="chatBox"></div>
+  </div>
 
   <script>
     let sock;
-    let username;
+    let currentUser = "";
 
-    const usernameInput = document.getElementById("usernameInput");
-    const recipientInput = document.getElementById("recipientInput");
-    const messageInput = document.getElementById("messageInput");
-    const sendButton = document.getElementById("sendButton");
-    const chatBox = document.getElementById("chatBox");
+    const showLoginForm = () => {
+      document.getElementById("loginForm").classList.remove("hidden");
+      document.getElementById("registerForm").classList.add("hidden");
+    };
 
-    // Start connection only when username is entered
-    usernameInput.addEventListener("change", function () {
-      username = usernameInput.value;
+    const showRegisterForm = () => {
+      document.getElementById("registerForm").classList.remove("hidden");
+      document.getElementById("loginForm").classList.add("hidden");
+    };
 
-      // Connect to WebSocket server
+    document.getElementById("showLogin").onclick = showLoginForm;
+    document.getElementById("showRegister").onclick = showRegisterForm;
+
+    document.getElementById("registerButton").onclick = async () => {
+      const username = document.getElementById("regUsername").value;
+      const password = document.getElementById("regPassword").value;
+
+      const res = await fetch("/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await res.json();
+      alert(data.message);
+    };
+
+    document.getElementById("loginButton").onclick = async () => {
+      const username = document.getElementById("loginUsername").value;
+      const password = document.getElementById("loginPassword").value;
+
+      const res = await fetch("/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        currentUser = username;
+        document.getElementById("authSection").classList.add("hidden");
+        document.getElementById("chatSection").classList.remove("hidden");
+        document.getElementById("currentUser").textContent = currentUser;
+        connectWebSocket();
+      } else {
+        alert(data.message);
+      }
+    };
+
+    function connectWebSocket() {
       sock = new WebSocket("ws://localhost:8080/ws");
 
       sock.onopen = () => {
-        console.log("WebSocket connected");
-
-        // Send login message: from=username, to="", content=""
-        const loginMsg = {
-          from: username,
-          to: "",
-          content: "LOGIN",
+        sock.send(JSON.stringify({
+          from: currentUser,
+          to: "", // login handshake only
+          content: "",
           timestamp: new Date().toISOString()
-        };
-
-        sock.send(JSON.stringify(loginMsg));
+        }));
+        console.log("WebSocket connection established.");
       };
 
       sock.onmessage = (event) => {
         const msg = JSON.parse(event.data);
         const p = document.createElement("p");
-        p.textContent = `${msg.from} → you: ${msg.content}`;
-        chatBox.appendChild(p);
+        p.textContent = msg.from + ": " + msg.content;
+        document.getElementById("chatBox").appendChild(p);
       };
-    });
+    }
 
-    sendButton.addEventListener("click", function () {
-      const message = messageInput.value;
-      const recipient = recipientInput.value;
+    document.getElementById("sendButton").onclick = () => {
+      const content = document.getElementById("messageInput").value;
+      const to = document.getElementById("toUser").value;
 
-      if (!message || !recipient || !username) {
-        alert("Please enter all fields: username, recipient, and message.");
-        return;
+      if (!to || !content) {
+        alert("both recipient and message must be included")
+        return
       }
 
       const msg = {
-        from: username,
-        to: recipient,
-        content: message,
+        from: currentUser,
+        to: to,
+        content: content,
         timestamp: new Date().toISOString()
       };
 
       sock.send(JSON.stringify(msg));
 
-      // Show your own message
       const p = document.createElement("p");
-      p.textContent = `You → ${recipient}: ${message}`;
-      chatBox.appendChild(p);
-      messageInput.value = "";
-    });
+      p.textContent = "You to " + to + ": " + content;
+      document.getElementById("chatBox").appendChild(p);
+
+      document.getElementById("messageInput").value = "";
+    };
   </script>
 </body>
 
