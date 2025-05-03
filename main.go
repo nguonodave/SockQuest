@@ -22,6 +22,16 @@ type Message struct {
 	Timestamp string `json:"timestamp"`
 }
 
+type UserStatus struct {
+	Username string `json:"username"`
+	Status   string `json:"status"`
+}
+
+type Envelope struct {
+	Type string      `json:"type"`
+	Data interface{} `json:"data"`
+}
+
 var (
 	users     = make(map[string]*websocket.Conn)
 	broadcast = make(chan Message)
@@ -33,15 +43,6 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true // allow all domain conns
 	},
-}
-
-func handleOnlineUsers(w http.ResponseWriter, r *http.Request) {
-	usernames := []string{}
-	for username := range users {
-		usernames = append(usernames, username)
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(usernames)
 }
 
 func setupDatabase() {
@@ -127,12 +128,15 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	users[username] = conn
 	log.Println(username, "connected")
 
+	broadcastUserList()
+
 	deliverOfflineMessages(username, conn)
 
 	// Clean up on disconnect
 	defer func() {
 		delete(users, username)
 		log.Println(username, "disconnected")
+		broadcastUserList()
 	}()
 
 	for {
@@ -325,12 +329,44 @@ func handleUserStatuses(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(userStatuses)
 }
 
+func broadcastUserList() {
+	rows, err := db.Query("SELECT username FROM users")
+	if err != nil {
+		log.Println("Failed to query users:", err)
+		return
+	}
+	defer rows.Close()
+
+	var allUsers []UserStatus
+	for rows.Next() {
+		var uname string
+		if err := rows.Scan(&uname); err == nil {
+			status := "offline"
+			if _, ok := users[uname]; ok {
+				status = "online"
+			}
+			allUsers = append(allUsers, UserStatus{Username: uname, Status: status})
+		}
+	}
+
+	payload := Envelope{
+		Type: "userlist",
+		Data: allUsers,
+	}
+
+	for _, conn := range users {
+		err := conn.WriteJSON(payload)
+		if err != nil {
+			log.Println("Failed to send user list update:", err)
+		}
+	}
+}
+
 func main() {
 	setupDatabase()
 
 	// serve static files
 	http.Handle("/", http.FileServer(http.Dir("./static")))
-	http.HandleFunc("/online", handleOnlineUsers)
 	http.HandleFunc("/register", registerHandler)
 	http.HandleFunc("/login", handleLogin)
 	http.HandleFunc("/session", handleSession)
