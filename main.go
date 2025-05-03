@@ -295,6 +295,36 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func handleUserStatuses(w http.ResponseWriter, r *http.Request) {
+	rows, err := db.Query("SELECT username FROM users")
+	if err != nil {
+		http.Error(w, "Failed to query users", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var userStatuses []map[string]string
+	for rows.Next() {
+		var username string
+		if err := rows.Scan(&username); err != nil {
+			continue
+		}
+
+		status := "offline"
+		if _, ok := users[username]; ok {
+			status = "online"
+		}
+
+		userStatuses = append(userStatuses, map[string]string{
+			"username": username,
+			"status":   status,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(userStatuses)
+}
+
 func main() {
 	setupDatabase()
 
@@ -304,6 +334,7 @@ func main() {
 	http.HandleFunc("/register", registerHandler)
 	http.HandleFunc("/login", handleLogin)
 	http.HandleFunc("/session", handleSession)
+	http.HandleFunc("/users", handleUserStatuses)
 	// WebSocket endpoint
 	http.HandleFunc("/ws", handleWebSocket)
 
