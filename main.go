@@ -362,6 +362,41 @@ func broadcastUserList() {
 	}
 }
 
+// Add this to your main.go
+func handleConversationHistory(w http.ResponseWriter, r *http.Request) {
+    currentUser := r.URL.Query().Get("currentUser")
+    selectedUser := r.URL.Query().Get("selectedUser")
+
+    if currentUser == "" || selectedUser == "" {
+        http.Error(w, "Both users must be specified", http.StatusBadRequest)
+        return
+    }
+
+    rows, err := db.Query(`
+        SELECT from_user, to_user, content, timestamp 
+        FROM messages 
+        WHERE (from_user = ? AND to_user = ?)
+           OR (from_user = ? AND to_user = ?)
+        ORDER BY timestamp ASC`,
+        currentUser, selectedUser, selectedUser, currentUser)
+    if err != nil {
+        http.Error(w, "Failed to query messages", http.StatusInternalServerError)
+        return
+    }
+    defer rows.Close()
+
+    var messages []Message
+    for rows.Next() {
+        var msg Message
+        if err := rows.Scan(&msg.From, &msg.To, &msg.Content, &msg.Timestamp); err != nil {
+            continue
+        }
+        messages = append(messages, msg)
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(messages)
+}
 func main() {
 	setupDatabase()
 
@@ -371,6 +406,7 @@ func main() {
 	http.HandleFunc("/login", handleLogin)
 	http.HandleFunc("/session", handleSession)
 	http.HandleFunc("/users", handleUserStatuses)
+	http.HandleFunc("/conversation", handleConversationHistory)
 	// WebSocket endpoint
 	http.HandleFunc("/ws", handleWebSocket)
 
