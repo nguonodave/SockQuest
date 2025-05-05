@@ -80,30 +80,6 @@ func setupDatabase() {
 	log.Println("Database initialized successfully.")
 }
 
-func deliverOfflineMessages(username string, conn *websocket.Conn) {
-	rows, err := db.Query("SELECT from_user, to_user, content, timestamp FROM messages WHERE to_user = ?", username)
-	if err != nil {
-		log.Println("Error retrieving offline messages:", err)
-		return
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var msg Message
-		err := rows.Scan(&msg.From, &msg.To, &msg.Content, &msg.Timestamp)
-		if err != nil {
-			log.Println("Row scan error:", err)
-			continue
-		}
-
-		// Send message to the user
-		if err := conn.WriteJSON(msg); err != nil {
-			log.Println("Error sending offline message to", username+":", err)
-			continue
-		}
-	}
-}
-
 // handleWebSocket uses the upgrader to upgrade the http conn
 // then reads and writes messages from and to the ws
 func handleWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -129,8 +105,6 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	log.Println(username, "connected")
 
 	broadcastUserList()
-
-	deliverOfflineMessages(username, conn)
 
 	// Clean up on disconnect
 	defer func() {
