@@ -157,12 +157,7 @@ document.getElementById("sendButton").onclick = async () => {
 
     sock.send(JSON.stringify(msg));
 
-    // Immediately show the sent message in the chat
-    const p = document.createElement("p");
-    p.textContent = `You: ${content}`;
-    p.style.textAlign = "right";
-    p.style.color = "blue";
-    document.getElementById("chatBox").appendChild(p);
+    document.getElementById("chatBox").appendChild(createMessageElement(msg))
 
     document.getElementById("messageInput").value = "";
 };
