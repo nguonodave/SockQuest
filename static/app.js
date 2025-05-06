@@ -2,14 +2,19 @@ let sock;
 let currentUser = "";
 let selectedRecipient = null;
 
+const toggleVisibility = (elementId, show) => {
+    const el = document.getElementById(elementId);
+    el.classList[show ? "remove" : "add"]("hidden");
+}
+
 const showLoginForm = () => {
-    document.getElementById("loginForm").classList.remove("hidden");
-    document.getElementById("registerForm").classList.add("hidden");
+    toggleVisibility("loginForm", true)
+    toggleVisibility("registerForm", false)
 };
 
 const showRegisterForm = () => {
-    document.getElementById("registerForm").classList.remove("hidden");
-    document.getElementById("loginForm").classList.add("hidden");
+    toggleVisibility("registerForm", true)
+    toggleVisibility("loginForm", false)
 };
 
 document.getElementById("showLogin").onclick = showLoginForm;
