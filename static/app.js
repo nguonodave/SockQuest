@@ -156,46 +156,7 @@ document.getElementById("sendButton").onclick = async () => {
 async function loadUsers() {
     const res = await fetch("/users");
     const users = await res.json();
-    const userList = document.getElementById("userList");
-    userList.innerHTML = "";
-
-    users.forEach(user => {
-        if (user.username === currentUser) return;
-
-        const li = document.createElement("li");
-        li.textContent = `${user.username} - ${user.status}`;
-        li.onclick = async () => {
-            selectedRecipient = user.username;
-
-            // Clear previous messages
-            document.getElementById("chatBox").innerHTML = "";
-
-            // Show chat elements
-            document.getElementById("messageInput").classList.remove("hidden");
-            document.getElementById("sendButton").classList.remove("hidden");
-            document.getElementById("chatBox").classList.remove("hidden");
-
-            // Fetch conversation history
-            const convRes = await fetch(`/conversation?currentUser=${currentUser}&selectedUser=${selectedRecipient}`);
-            const messages = await convRes.json();
-
-            // Display all messages
-            messages.forEach(msg => {
-                const p = document.createElement("p");
-                if (msg.from === currentUser) {
-                    p.textContent = `You: ${msg.content}`;
-                    p.style.textAlign = "right";
-                    p.style.color = "blue";
-                } else {
-                    p.textContent = `${msg.from}: ${msg.content}`;
-                    p.style.textAlign = "left";
-                    p.style.color = "green";
-                }
-                document.getElementById("chatBox").appendChild(p);
-            });
-        };
-        userList.appendChild(li);
-    });
+    populateUserList(users)
 }
 
 // session check
