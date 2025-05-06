@@ -176,12 +176,15 @@ async function loadUsers() {
         li.onclick = async () => {
             selectedRecipient = user.username;
 
+            // Clear previous messages
             document.getElementById("chatBox").innerHTML = "";
 
+            // Show chat elements
             document.getElementById("messageInput").classList.remove("hidden");
             document.getElementById("sendButton").classList.remove("hidden");
             document.getElementById("chatBox").classList.remove("hidden");
 
+            // Fetch conversation history
             const convRes = await fetch(`/conversation?currentUser=${currentUser}&selectedUser=${selectedRecipient}`);
             const messages = await convRes.json();
 
