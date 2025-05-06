@@ -61,9 +61,7 @@ function startChat() {
     document.getElementById("currentUser").textContent = currentUser;
 
     // Initially hide the message input and chat box
-    document.getElementById("messageInput").classList.add("hidden");
-    document.getElementById("sendButton").classList.add("hidden");
-    document.getElementById("chatBox").classList.add("hidden");
+    ["messageInput", "sendButton", "chatBox"].forEach(id => toggleVisibility(id, false));
 
     connectWebSocket();
     loadUsers();
