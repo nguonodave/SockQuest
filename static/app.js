@@ -56,8 +56,8 @@ document.getElementById("loginButton").onclick = async () => {
 };
 
 function startChat() {
-    document.getElementById("authSection").classList.add("hidden");
-    document.getElementById("chatSection").classList.remove("hidden");
+    toggleVisibility("authSection", false)
+    toggleVisibility("chatSection", true)
     document.getElementById("currentUser").textContent = currentUser;
 
     // Initially hide the message input and chat box
