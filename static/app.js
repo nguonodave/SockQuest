@@ -9,6 +9,14 @@ const toggleVisibility = (elementId, show) => {
 
 const getInputValue = (id) => document.getElementById(id).value
 
+const createMessageElement = (msg) => {
+    const p = document.createElement("p");
+    p.textContent = msg.from === currentUser ? `You: ${msg.content}` : `${msg.from}: ${msg.content}`;
+    p.style.textAlign = msg.from === currentUser ? "right" : "left";
+    p.style.color = msg.from === currentUser ? "blue" : "green";
+    return p;
+};
+
 const showLoginForm = () => {
     toggleVisibility("loginForm", true)
     toggleVisibility("registerForm", false)
@@ -127,12 +135,7 @@ function connectWebSocket() {
                 userList.appendChild(li);
             });
         } else if (msg.to === currentUser && msg.from === selectedRecipient) {
-            // Only show messages from the currently selected recipient
-            const p = document.createElement("p");
-            p.textContent = `${msg.from}: ${msg.content}`;
-            p.style.textAlign = "left";
-            p.style.color = "green";
-            document.getElementById("chatBox").appendChild(p);
+            document.getElementById("chatBox").appendChild(createMessageElement(msg));
         }
     };
 }
