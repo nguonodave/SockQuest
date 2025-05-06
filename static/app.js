@@ -7,6 +7,8 @@ const toggleVisibility = (elementId, show) => {
     el.classList[show ? "remove" : "add"]("hidden");
 }
 
+const getInputValue = (id) => document.getElementById(id).value
+
 const showLoginForm = () => {
     toggleVisibility("loginForm", true)
     toggleVisibility("registerForm", false)
@@ -21,8 +23,8 @@ document.getElementById("showLogin").onclick = showLoginForm;
 document.getElementById("showRegister").onclick = showRegisterForm;
 
 document.getElementById("registerButton").onclick = async () => {
-    const username = document.getElementById("regUsername").value;
-    const password = document.getElementById("regPassword").value;
+    const username = getInputValue("regUsername")
+    const password = getInputValue("regPassword")
 
     const res = await fetch("/register", {
         method: "POST",
@@ -35,8 +37,8 @@ document.getElementById("registerButton").onclick = async () => {
 };
 
 document.getElementById("loginButton").onclick = async () => {
-    const username = document.getElementById("loginUsername").value;
-    const password = document.getElementById("loginPassword").value;
+    const username = getInputValue("loginUsername")
+    const password = getInputValue("loginPassword")
 
     const res = await fetch("/login", {
         method: "POST",
@@ -136,7 +138,7 @@ function connectWebSocket() {
 }
 
 document.getElementById("sendButton").onclick = async () => {
-    const content = document.getElementById("messageInput").value;
+    const content = getInputValue("messageInput")
 
     if (!selectedRecipient || !content) {
         alert("Select a user and type a message.");
