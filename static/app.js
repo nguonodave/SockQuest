@@ -9,6 +9,11 @@ const toggleVisibility = (elementId, show) => {
 
 const getInputValue = (id) => document.getElementById(id).value
 
+const clearAndShowChatElements = () => {
+    document.getElementById("chatBox").innerHTML = "";
+    ["messageInput", "sendButton", "chatBox"].forEach(id => toggleVisibility(id, true));
+};
+
 const createMessageElement = (msg) => {
     const p = document.createElement("p");
     p.textContent = msg.from === currentUser ? `You: ${msg.content}` : `${msg.from}: ${msg.content}`;
@@ -94,50 +99,36 @@ function connectWebSocket() {
         const msg = JSON.parse(event.data);
 
         if (msg.type === "userlist") {
-            const users = msg.data;
-            const userList = document.getElementById("userList");
-            userList.innerHTML = "";
-
-            users.forEach(user => {
-                if (user.username === currentUser) return;
-                const li = document.createElement("li");
-                li.textContent = `${user.username} - ${user.status}`;
-                li.onclick = async () => {
-                    selectedRecipient = user.username;
-
-                    // Clear previous messages
-                    document.getElementById("chatBox").innerHTML = "";
-
-                    // Show chat elements
-                    document.getElementById("messageInput").classList.remove("hidden");
-                    document.getElementById("sendButton").classList.remove("hidden");
-                    document.getElementById("chatBox").classList.remove("hidden");
-
-                    // Fetch conversation history
-                    const convRes = await fetch(`/conversation?currentUser=${currentUser}&selectedUser=${selectedRecipient}`);
-                    const messages = await convRes.json();
-
-                    // Display all messages
-                    messages.forEach(msg => {
-                        const p = document.createElement("p");
-                        if (msg.from === currentUser) {
-                            p.textContent = `You: ${msg.content}`;
-                            p.style.textAlign = "right";
-                            p.style.color = "blue";
-                        } else {
-                            p.textContent = `${msg.from}: ${msg.content}`;
-                            p.style.textAlign = "left";
-                            p.style.color = "green";
-                        }
-                        document.getElementById("chatBox").appendChild(p);
-                    });
-                };
-                userList.appendChild(li);
-            });
+            populateUserList(msg.data)
         } else if (msg.to === currentUser && msg.from === selectedRecipient) {
             document.getElementById("chatBox").appendChild(createMessageElement(msg));
         }
     };
+}
+
+function populateUserList(users) {
+    const userList = document.getElementById("userList");
+    userList.innerHTML = "";
+
+    users.forEach(user => {
+        if (user.username === currentUser) return;
+
+        const li = document.createElement("li");
+        li.textContent = `${user.username} - ${user.status}`;
+        li.onclick = () => openConversationWith(user.username);
+        userList.appendChild(li);
+    });
+}
+
+async function openConversationWith(username) {
+    selectedRecipient = username;
+    clearAndShowChatElements();
+
+    const convRes = await fetch(`/conversation?currentUser=${currentUser}&selectedUser=${selectedRecipient}`);
+    const messages = await convRes.json();
+
+    const chatBox = document.getElementById("chatBox");
+    messages.forEach(msg => chatBox.appendChild(createMessageElement(msg)));
 }
 
 document.getElementById("sendButton").onclick = async () => {
