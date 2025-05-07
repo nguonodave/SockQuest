@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -338,39 +339,74 @@ func broadcastUserList() {
 
 // Add this to your main.go
 func handleConversationHistory(w http.ResponseWriter, r *http.Request) {
-    currentUser := r.URL.Query().Get("currentUser")
-    selectedUser := r.URL.Query().Get("selectedUser")
+	currentUser := r.URL.Query().Get("currentUser")
+	selectedUser := r.URL.Query().Get("selectedUser")
+	limitStr := r.URL.Query().Get("limit")
+	offsetStr := r.URL.Query().Get("offset")
 
-    if currentUser == "" || selectedUser == "" {
-        http.Error(w, "Both users must be specified", http.StatusBadRequest)
-        return
-    }
+	if currentUser == "" || selectedUser == "" {
+		http.Error(w, "Both users must be specified", http.StatusBadRequest)
+		return
+	}
 
-    rows, err := db.Query(`
+	// Default values
+	limit := 10
+	offset := 0
+
+	// Parse limit if provided
+	if limitStr != "" {
+		var err error
+		limit, err = strconv.Atoi(limitStr)
+		if err != nil || limit < 0 {
+			http.Error(w, "Invalid limit value", http.StatusBadRequest)
+			return
+		}
+	}
+
+	// Parse offset if provided
+	if offsetStr != "" {
+		var err error
+		offset, err = strconv.Atoi(offsetStr)
+		if err != nil || offset < 0 {
+			http.Error(w, "Invalid offset value", http.StatusBadRequest)
+			return
+		}
+	}
+
+	query := `
         SELECT from_user, to_user, content, timestamp 
         FROM messages 
         WHERE (from_user = ? AND to_user = ?)
            OR (from_user = ? AND to_user = ?)
-        ORDER BY timestamp ASC`,
-        currentUser, selectedUser, selectedUser, currentUser)
-    if err != nil {
-        http.Error(w, "Failed to query messages", http.StatusInternalServerError)
-        return
-    }
-    defer rows.Close()
+        ORDER BY timestamp DESC
+		LIMIT ? OFFSET ?`
 
-    var messages []Message
-    for rows.Next() {
-        var msg Message
-        if err := rows.Scan(&msg.From, &msg.To, &msg.Content, &msg.Timestamp); err != nil {
-            continue
-        }
-        messages = append(messages, msg)
-    }
+	rows, err := db.Query(query, currentUser, selectedUser, selectedUser, currentUser, limit, offset)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Failed to query messages", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
 
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(messages)
+	var messages []Message
+	for rows.Next() {
+		var msg Message
+		if err := rows.Scan(&msg.From, &msg.To, &msg.Content, &msg.Timestamp); err != nil {
+			continue
+		}
+		messages = append(messages, msg)
+	}
+
+	// Since we ordered DESC for newest first, reverse them before sending
+	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
+		messages[i], messages[j] = messages[j], messages[i]
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(messages)
 }
+
 func main() {
 	setupDatabase()
 
