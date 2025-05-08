@@ -124,6 +124,8 @@ async function openConversationWith(username) {
     selectedRecipient = username;
     clearAndShowChatElements();
 
+    attachScrollListener()
+
     const convRes = await fetch(`/conversation?currentUser=${currentUser}&selectedUser=${selectedRecipient}`);
     const messages = await convRes.json();
 
@@ -176,13 +178,15 @@ function throttle(fn, delay) {
     };
 }
 
-const chatBox = document.getElementById("chatBox")
-chatBox.addEventListener("scroll", throttle(() => {
-    console.log(chatBox.scrollTop)
-    if (chatBox.scrollTop < 50) {
-        loadMessages()
-    }
-}, 30))
+function attachScrollListener() {
+    const chatBox = document.getElementById("chatBox")
+    chatBox.addEventListener("scroll", throttle(() => {
+        console.log(chatBox.scrollTop)
+        if (chatBox.scrollTop < 50) {
+            loadMessages()
+        }
+    }, 30))
+}
 
 document.getElementById("sendButton").onclick = async () => {
     const content = getInputValue("messageInput")
