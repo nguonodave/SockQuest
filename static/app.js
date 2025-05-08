@@ -126,11 +126,7 @@ async function openConversationWith(username) {
 
     attachScrollListener()
 
-    const convRes = await fetch(`/conversation?currentUser=${currentUser}&selectedUser=${selectedRecipient}`);
-    const messages = await convRes.json();
-
-    const chatBox = document.getElementById("chatBox");
-    messages.forEach(msg => chatBox.appendChild(createMessageElement(msg)));
+    await loadMessages()
 }
 
 let offset = 0
