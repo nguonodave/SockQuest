@@ -131,6 +131,59 @@ async function openConversationWith(username) {
     messages.forEach(msg => chatBox.appendChild(createMessageElement(msg)));
 }
 
+let offset = 0
+const limit = 10
+let allMessagesLoaded = false
+let isLoading = false
+
+async function loadMessages() {
+    if (allMessagesLoaded || isLoading) return
+
+    isLoading = true
+    try {
+        const res = await fetch(`/conversation?currentUser=${currentUser}&selectedUser=${selectedRecipient}&limit=${limit}&offset=${offset}`)
+        const messages = await res.json()
+
+        // if fewer than requested limit are returned, means all messages have been requested
+        if (messages.length < limit) {
+            allMessagesLoaded = true
+        }
+
+        const chatBox = document.getElementById("chatBox")
+        const scrollHeightBefore = chatBox.scrollHeight
+
+        messages.reverse().forEach(msg => {
+            const el = createMessageElement(msg)
+            chatBox.insertBefore(el, chatBox.firstChild)
+        })
+
+        // preserve scroll position after prepending
+        chatBox.scrollTop += chatBox.scrollHeight - scrollHeightBefore
+        offset += messages.length
+    } finally {
+        isLoading = false
+    }
+}
+
+function throttle(fn, delay) {
+    let lastCall = 0;
+    return (...args) => {
+        const now = new Date().getTime();
+        if (now - lastCall >= delay) {
+            lastCall = now;
+            fn(...args);
+        }
+    };
+}
+
+const chatBox = document.getElementById("chatBox")
+chatBox.addEventListener("scroll", throttle(() => {
+    console.log(chatBox.scrollTop)
+    if (chatBox.scrollTop < 50) {
+        loadMessages()
+    }
+}, 30))
+
 document.getElementById("sendButton").onclick = async () => {
     const content = getInputValue("messageInput")
 
