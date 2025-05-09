@@ -130,6 +130,7 @@ async function openConversationWith(username) {
     const messages = await convRes.json();
     const chatBox = document.getElementById("chatBox");
     messages.forEach(msg => chatBox.appendChild(createMessageElement(msg)));
+    chatBox.scrollTop = chatBox.scrollHeight;
 }
 
 let offset = 0
