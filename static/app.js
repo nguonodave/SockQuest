@@ -121,6 +121,10 @@ function populateUserList(users) {
 }
 
 async function openConversationWith(username) {
+    if (selectedRecipient) {
+        return
+    }
+
     selectedRecipient = username;
     clearAndShowChatElements();
 
