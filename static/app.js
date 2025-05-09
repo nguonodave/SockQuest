@@ -137,7 +137,7 @@ async function openConversationWith(username) {
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-let offset = 0
+let offset = 10
 const limit = 10
 let allMessagesLoaded = false
 let isLoading = false
