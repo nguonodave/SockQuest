@@ -214,7 +214,9 @@ document.getElementById("sendButton").onclick = async () => {
 
     sock.send(JSON.stringify(msg));
 
-    document.getElementById("chatBox").appendChild(createMessageElement(msg))
+    const chatBox = document.getElementById("chatBox")
+    chatBox.appendChild(createMessageElement(msg));
+    chatBox.scrollTop = chatBox.scrollHeight
 
     document.getElementById("messageInput").value = "";
 };
