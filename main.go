@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 
@@ -150,6 +152,9 @@ func handleMessages() {
 			log.Println("User", msg.To, "is not online. Message not delivered.")
 			// Later: store in DB for delivery when they return
 		}
+
+		// Update the user list for both sender and recipient
+		broadcastUserList()
 	}
 }
 
@@ -275,64 +280,159 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUserStatuses(w http.ResponseWriter, r *http.Request) {
-	rows, err := db.Query("SELECT username FROM users")
+	currentUser := r.URL.Query().Get("currentUser")
+	rows, err := db.Query("SELECT username FROM users WHERE username != ? ORDER BY username", currentUser)
 	if err != nil {
 		http.Error(w, "Failed to query users", http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
 
-	var userStatuses []map[string]string
+	type userWithTime struct {
+		username string
+		lastTime time.Time
+	}
+
+	var userStatuses []userWithTime
 	for rows.Next() {
 		var username string
 		if err := rows.Scan(&username); err != nil {
 			continue
 		}
 
-		status := "offline"
-		if _, ok := users[username]; ok {
-			status = "online"
+		// Get last message time
+		timestamp, err := getLastMessageTimestamp(currentUser, username)
+		var lastTime time.Time
+		if err == nil && timestamp != "" {
+			lastTime, _ = time.Parse(time.RFC3339, timestamp)
 		}
 
-		userStatuses = append(userStatuses, map[string]string{
-			"username": username,
+		userStatuses = append(userStatuses, userWithTime{
+			username: username,
+			lastTime: lastTime,
+		})
+	}
+
+	// Sort by last message time (newest first), then alphabetically
+	sort.Slice(userStatuses, func(i, j int) bool {
+		if !userStatuses[i].lastTime.IsZero() || !userStatuses[j].lastTime.IsZero() {
+			if userStatuses[i].lastTime.Equal(userStatuses[j].lastTime) {
+				return userStatuses[i].username < userStatuses[j].username
+			}
+			return userStatuses[i].lastTime.After(userStatuses[j].lastTime)
+		}
+		return userStatuses[i].username < userStatuses[j].username
+	})
+
+	// Convert to final output format
+	var result []map[string]string
+	for _, user := range userStatuses {
+		status := "offline"
+		if _, ok := users[user.username]; ok {
+			status = "online"
+		}
+		result = append(result, map[string]string{
+			"username": user.username,
 			"status":   status,
 		})
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(userStatuses)
+	json.NewEncoder(w).Encode(result)
+}
+
+// getLastMessageTimestamp gets the timestamp of the last message between user1 and user2
+func getLastMessageTimestamp(user1, user2 string) (string, error) {
+	var timestamp string
+	err := db.QueryRow(`
+        SELECT timestamp 
+        FROM messages 
+        WHERE (from_user = ? AND to_user = ?) OR (from_user = ? AND to_user = ?)
+        ORDER BY timestamp DESC
+        LIMIT 1`,
+		user1, user2, user2, user1).Scan(&timestamp)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil
+		}
+		return "", err
+	}
+	return timestamp, nil
 }
 
 func broadcastUserList() {
-	rows, err := db.Query("SELECT username FROM users")
-	if err != nil {
-		log.Println("Failed to query users:", err)
-		return
-	}
-	defer rows.Close()
+	// Get all users except the current user (we'll need to know who's requesting)
+	// Since this is broadcast, we'll need to handle this differently
+	// We'll need to send a personalized list to each connected user
 
-	var allUsers []UserStatus
-	for rows.Next() {
-		var uname string
-		if err := rows.Scan(&uname); err == nil {
+	for username, conn := range users {
+		// For each connected user, get their personalized sorted list
+		rows, err := db.Query("SELECT username FROM users WHERE username != ?", username)
+		if err != nil {
+			log.Println("Failed to query users:", err)
+			continue
+		}
+
+		type userWithTime struct {
+			username string
+			lastTime time.Time
+		}
+
+		var userStatuses []userWithTime
+		for rows.Next() {
+			var otherUser string
+			if err := rows.Scan(&otherUser); err != nil {
+				continue
+			}
+
+			// Get last message time between current user and this other user
+			timestamp, err := getLastMessageTimestamp(username, otherUser)
+			var lastTime time.Time
+			if err == nil && timestamp != "" {
+				lastTime, _ = time.Parse(time.RFC3339, timestamp)
+			}
+
+			userStatuses = append(userStatuses, userWithTime{
+				username: otherUser,
+				lastTime: lastTime,
+			})
+		}
+		rows.Close()
+
+		// Sort by last message time (newest first), then alphabetically
+		sort.Slice(userStatuses, func(i, j int) bool {
+			if !userStatuses[i].lastTime.IsZero() || !userStatuses[j].lastTime.IsZero() {
+				if userStatuses[i].lastTime.Equal(userStatuses[j].lastTime) {
+					return userStatuses[i].username < userStatuses[j].username
+				}
+				return userStatuses[i].lastTime.After(userStatuses[j].lastTime)
+			}
+			return userStatuses[i].username < userStatuses[j].username
+		})
+
+		// Convert to final output format
+		var result []UserStatus
+		for _, user := range userStatuses {
 			status := "offline"
-			if _, ok := users[uname]; ok {
+			if _, ok := users[user.username]; ok {
 				status = "online"
 			}
-			allUsers = append(allUsers, UserStatus{Username: uname, Status: status})
+			result = append(result, UserStatus{
+				Username: user.username,
+				Status:   status,
+			})
 		}
-	}
 
-	payload := Envelope{
-		Type: "userlist",
-		Data: allUsers,
-	}
+		payload := Envelope{
+			Type: "userlist",
+			Data: result,
+		}
 
-	for _, conn := range users {
-		err := conn.WriteJSON(payload)
+		err = conn.WriteJSON(payload)
 		if err != nil {
 			log.Println("Failed to send user list update:", err)
+			conn.Close()
+			delete(users, username)
 		}
 	}
 }

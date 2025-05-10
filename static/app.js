@@ -128,7 +128,7 @@ function populateUserList(users) {
 
 async function openConversationWith(username) {
     selectedRecipient = username;
-    
+
     if (selectedRecipient === initialSelectedRecipient) {
         return
     }
@@ -224,10 +224,13 @@ document.getElementById("sendButton").onclick = async () => {
     chatBox.scrollTop = chatBox.scrollHeight
 
     document.getElementById("messageInput").value = "";
+
+    // Refresh user list to update sorting
+    loadUsers();
 };
 
 async function loadUsers() {
-    const res = await fetch("/users");
+    const res = await fetch(`/users?currentUser=${currentUser}`);
     const users = await res.json();
     populateUserList(users)
 }
