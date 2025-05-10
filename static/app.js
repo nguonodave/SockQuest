@@ -101,7 +101,12 @@ function connectWebSocket() {
         if (msg.type === "userlist") {
             populateUserList(msg.data)
         } else if (msg.to === currentUser && msg.from === selectedRecipient) {
-            document.getElementById("chatBox").appendChild(createMessageElement(msg));
+            const chatBox = document.getElementById("chatBox")
+            const scrollbarAtBottom = chatBox.scrollHeight - chatBox.scrollTop === chatBox.clientHeight
+            chatBox.appendChild(createMessageElement(msg));
+            if (scrollbarAtBottom) {
+                chatBox.scrollTop = chatBox.scrollHeight
+            }
         }
     };
 }
