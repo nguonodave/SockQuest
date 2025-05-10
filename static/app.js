@@ -1,6 +1,7 @@
 let sock;
 let currentUser = "";
 let selectedRecipient = null;
+let initialSelectedRecipient = null
 
 const toggleVisibility = (elementId, show) => {
     const el = document.getElementById(elementId);
@@ -126,11 +127,13 @@ function populateUserList(users) {
 }
 
 async function openConversationWith(username) {
-    if (selectedRecipient) {
+    selectedRecipient = username;
+    
+    if (selectedRecipient === initialSelectedRecipient) {
         return
     }
 
-    selectedRecipient = username;
+    initialSelectedRecipient = selectedRecipient
     clearAndShowChatElements();
 
     attachScrollListener()
@@ -138,7 +141,9 @@ async function openConversationWith(username) {
     const convRes = await fetch(`/conversation?currentUser=${currentUser}&selectedUser=${selectedRecipient}`);
     const messages = await convRes.json();
     const chatBox = document.getElementById("chatBox");
-    messages.forEach(msg => chatBox.appendChild(createMessageElement(msg)));
+    if (messages) {
+        messages.forEach(msg => chatBox.appendChild(createMessageElement(msg)));
+    }
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
