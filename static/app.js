@@ -160,6 +160,10 @@ async function loadMessages() {
         const res = await fetch(`/conversation?currentUser=${currentUser}&selectedUser=${selectedRecipient}&limit=${limit}&offset=${offset}`)
         const messages = await res.json()
 
+        if (!messages) {
+            return
+        }
+
         // if fewer than requested limit are returned, means all messages have been requested
         if (messages.length < limit) {
             allMessagesLoaded = true
