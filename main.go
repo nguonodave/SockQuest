@@ -61,7 +61,8 @@ func setupDatabase() {
 		from_user TEXT,
 		to_user TEXT,
 		content TEXT,
-		timestamp TEXT
+		timestamp TEXT,
+		read INTEGER DEFAULT 0
 	);`
 
 	createUsersTable := `
@@ -505,6 +506,31 @@ func handleConversationHistory(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(messages)
+}
+
+func countUnreadMessages(username string) (map[string]int, error) {
+    query := `
+        SELECT from_user, COUNT(*) as count 
+        FROM messages 
+        WHERE to_user = ? AND read = 0
+        GROUP BY from_user`
+    
+    rows, err := db.Query(query, username)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    unreadCounts := make(map[string]int)
+    for rows.Next() {
+        var fromUser string
+        var count int
+        if err := rows.Scan(&fromUser, &count); err != nil {
+            continue
+        }
+        unreadCounts[fromUser] = count
+    }
+    return unreadCounts, nil
 }
 
 func main() {
