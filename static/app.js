@@ -113,6 +113,10 @@ function connectWebSocket() {
 }
 
 function populateUserList(users) {
+    if (!users) {
+        return
+    }
+
     const userList = document.getElementById("userList");
     userList.innerHTML = "";
 
