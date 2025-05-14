@@ -150,7 +150,7 @@ async function loadUnreadCounts() {
 
 async function markMessagesAsRead(fromUser) {
     // if fromUser is not selected or there are no unread counts from fromUser, return
-    if (!fromUser || unreadCounts[fromUser] === undefined) return;
+    if (!fromUser) return;
 
     try {
         const response = await fetch("/markAsRead", {
