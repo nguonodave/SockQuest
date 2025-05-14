@@ -33,3 +33,13 @@
 #userList li:hover {
     background-color: #e0e0e0;
 }
+
+#notificationBadge {
+    margin: 10px 0;
+    background-color: red;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 10px;
+    width: fit-content;
+    z-index: 1000;
+}
