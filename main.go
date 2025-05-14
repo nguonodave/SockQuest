@@ -533,6 +533,36 @@ func countUnreadMessages(username string) (map[string]int, error) {
     return unreadCounts, nil
 }
 
+func handleMarkAsRead(w http.ResponseWriter, r *http.Request) {
+    if r.Method != http.MethodPost {
+        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        return
+    }
+
+    var data struct {
+        CurrentUser string `json:"currentUser"`
+        FromUser    string `json:"fromUser"`
+    }
+    
+    if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+        http.Error(w, "Invalid input", http.StatusBadRequest)
+        return
+    }
+
+    _, err := db.Exec(`
+        UPDATE messages 
+        SET read = 1 
+        WHERE from_user = ? AND to_user = ? AND read = 0`,
+        data.FromUser, data.CurrentUser)
+    
+    if err != nil {
+        http.Error(w, "Failed to update messages", http.StatusInternalServerError)
+        return
+    }
+
+    w.WriteHeader(http.StatusOK)
+}
+
 func main() {
 	setupDatabase()
 
@@ -543,6 +573,7 @@ func main() {
 	http.HandleFunc("/session", handleSession)
 	http.HandleFunc("/users", handleUserStatuses)
 	http.HandleFunc("/conversation", handleConversationHistory)
+	http.HandleFunc("/markAsRead", handleMarkAsRead)
 	// WebSocket endpoint
 	http.HandleFunc("/ws", handleWebSocket)
 
