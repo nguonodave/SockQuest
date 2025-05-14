@@ -160,8 +160,13 @@ async function markMessagesAsRead(fromUser) {
         });
 
         if (response.ok) {
-            delete unreadCounts[fromUser];
+            if (unreadCounts[fromUser] !== undefined) {
+                delete unreadCounts[fromUser];
+                updateNotificationBadge();
+            }
             updateNotificationBadge();
+        } else {
+            console.error("Failed to mark as read, status:", response.status);
         }
     } catch (error) {
         console.error("Failed to mark messages as read:", error);
