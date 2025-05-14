@@ -112,8 +112,8 @@ function connectWebSocket() {
                 if (scrollbarAtBottom) {
                     chatBox.scrollTop = chatBox.scrollHeight
                 }
-                // // Mark as read when viewing the conversation
-                // markMessagesAsRead(msg.from);
+                // Mark as read when viewing the conversation
+                markMessagesAsRead(msg.from);
             } else {
                 // Increment unread count for this sender
                 unreadCounts[msg.from] = (unreadCounts[msg.from] || 0) + 1;
