@@ -83,6 +83,8 @@ function startChat() {
     loadUsers();
 }
 
+let unreadCounts = {};
+
 function connectWebSocket() {
     sock = new WebSocket("ws://localhost:8080/ws");
 
@@ -110,6 +112,42 @@ function connectWebSocket() {
             }
         }
     };
+
+    sock.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+
+        if (msg.type === "userlist") {
+            populateUserList(msg.data);
+        } else if (msg.to === currentUser) {
+            if (msg.from === selectedRecipient) {
+                const chatBox = document.getElementById("chatBox")
+                const scrollbarAtBottom = chatBox.scrollHeight - chatBox.scrollTop === chatBox.clientHeight
+                chatBox.appendChild(createMessageElement(msg));
+                if (scrollbarAtBottom) {
+                    chatBox.scrollTop = chatBox.scrollHeight
+                }
+                // // Mark as read when viewing the conversation
+                // markMessagesAsRead(msg.from);
+            } else {
+                // Increment unread count for this sender
+                unreadCounts[msg.from] = (unreadCounts[msg.from] || 0) + 1;
+                updateNotificationBadge();
+            }
+        }
+    };
+}
+
+function updateNotificationBadge() {
+    const totalUnread = Object.values(unreadCounts).reduce((sum, count) => sum + count, 0);
+    const badge = document.getElementById("notificationBadge");
+    const countElement = document.getElementById("notificationCount");
+
+    if (totalUnread > 0) {
+        countElement.textContent = totalUnread;
+        toggleVisibility("notificationBadge", true);
+    } else {
+        toggleVisibility("notificationBadge", false);
+    }
 }
 
 function populateUserList(users) {

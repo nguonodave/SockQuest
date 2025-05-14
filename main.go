@@ -563,6 +563,23 @@ func handleMarkAsRead(w http.ResponseWriter, r *http.Request) {
     w.WriteHeader(http.StatusOK)
 }
 
+func handleUnreadCounts(w http.ResponseWriter, r *http.Request) {
+    username := r.URL.Query().Get("username")
+    if username == "" {
+        http.Error(w, "Username is required", http.StatusBadRequest)
+        return
+    }
+
+    counts, err := countUnreadMessages(username)
+    if err != nil {
+        http.Error(w, "Failed to get unread counts", http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(counts)
+}
+
 func main() {
 	setupDatabase()
 
