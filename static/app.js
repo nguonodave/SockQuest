@@ -81,6 +81,7 @@ function startChat() {
 
     connectWebSocket();
     loadUsers();
+    loadUnreadCounts();
 }
 
 let unreadCounts = {};
@@ -147,6 +148,18 @@ function updateNotificationBadge() {
         toggleVisibility("notificationBadge", true);
     } else {
         toggleVisibility("notificationBadge", false);
+    }
+}
+
+async function loadUnreadCounts() {
+    try {
+        const response = await fetch(`/unreadCounts?username=${currentUser}`);
+        if (response.ok) {
+            unreadCounts = await response.json();
+            updateNotificationBadge();
+        }
+    } catch (error) {
+        console.error("Failed to load unread counts:", error);
     }
 }
 
