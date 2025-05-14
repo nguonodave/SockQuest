@@ -103,21 +103,6 @@ function connectWebSocket() {
         const msg = JSON.parse(event.data);
 
         if (msg.type === "userlist") {
-            populateUserList(msg.data)
-        } else if (msg.to === currentUser && msg.from === selectedRecipient) {
-            const chatBox = document.getElementById("chatBox")
-            const scrollbarAtBottom = chatBox.scrollHeight - chatBox.scrollTop === chatBox.clientHeight
-            chatBox.appendChild(createMessageElement(msg));
-            if (scrollbarAtBottom) {
-                chatBox.scrollTop = chatBox.scrollHeight
-            }
-        }
-    };
-
-    sock.onmessage = (event) => {
-        const msg = JSON.parse(event.data);
-
-        if (msg.type === "userlist") {
             populateUserList(msg.data);
         } else if (msg.to === currentUser) {
             if (msg.from === selectedRecipient) {

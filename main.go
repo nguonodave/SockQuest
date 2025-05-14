@@ -549,6 +549,9 @@ func handleMarkAsRead(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+	fmt.Println(data.CurrentUser)
+	fmt.Println(data.FromUser)
+
     _, err := db.Exec(`
         UPDATE messages 
         SET read = 1 
