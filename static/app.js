@@ -163,6 +163,26 @@ async function loadUnreadCounts() {
     }
 }
 
+async function markMessagesAsRead(fromUser) {
+    // if fromUser is not selected or there are no unread counts from fromUser, return
+    if (!fromUser || unreadCounts[fromUser] === undefined) return;
+
+    try {
+        const response = await fetch("/markAsRead", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ currentUser, fromUser })
+        });
+
+        if (response.ok) {
+            delete unreadCounts[fromUser];
+            updateNotificationBadge();
+        }
+    } catch (error) {
+        console.error("Failed to mark messages as read:", error);
+    }
+}
+
 function populateUserList(users) {
     if (!users) {
         return
@@ -200,6 +220,7 @@ async function openConversationWith(username) {
         messages.forEach(msg => chatBox.appendChild(createMessageElement(msg)));
     }
     chatBox.scrollTop = chatBox.scrollHeight;
+    markMessagesAsRead(username)
 }
 
 let offset = 10
