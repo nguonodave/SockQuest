@@ -590,6 +590,7 @@ func main() {
 	http.HandleFunc("/session", handleSession)
 	http.HandleFunc("/users", handleUserStatuses)
 	http.HandleFunc("/conversation", handleConversationHistory)
+	http.HandleFunc("/unreadCounts", handleUnreadCounts)
 	http.HandleFunc("/markAsRead", handleMarkAsRead)
 	// WebSocket endpoint
 	http.HandleFunc("/ws", handleWebSocket)
